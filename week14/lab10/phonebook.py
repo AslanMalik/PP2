@@ -1,10 +1,20 @@
-#.\venv\Scripts\Activate.ps1
+
 
 import csv
 import psycopg2
-from config import load_config
 
-# --- Создание таблицы ---
+
+def connect_db():
+    return psycopg2.connect(
+        dbname="suppliers",       
+        user="postgres",
+        password="Python2006!",   
+        host="localhost",
+        port="5432"
+    )
+
+
+
 def create_table():
     command = """
     CREATE TABLE IF NOT EXISTS phonebook (
@@ -14,7 +24,7 @@ def create_table():
     );
     """
     try:
-        with psycopg2.connect(**load_config()) as conn:
+        with connect_db() as conn:
             with conn.cursor() as cur:
                 cur.execute(command)
                 print("✅ Таблица создана.")
@@ -27,7 +37,7 @@ def insert_from_input():
     name = input("Введите имя: ")
     phone = input("Введите телефон: ")
     try:
-        with psycopg2.connect(**load_config()) as conn:
+        with connect_db() as conn:
             with conn.cursor() as cur:
                 cur.execute("INSERT INTO phonebook(name, phone) VALUES (%s, %s);", (name, phone))
                 print("✅ Контакт добавлен.")
@@ -39,7 +49,7 @@ def insert_from_input():
 def insert_from_csv():
     filename = input("Введите имя CSV-файла (например, phonebook_data1.csv): ")
     try:
-        with psycopg2.connect(**load_config()) as conn:
+        with connect_db() as conn:
             with conn.cursor() as cur:
                 with open(filename, 'r', encoding='utf-8') as f:
                     reader = csv.DictReader(f)
@@ -55,7 +65,7 @@ def update_contact():
     print("1 - Изменить имя\n2 - Изменить телефон")
     choice = input("Выберите действие: ")
     try:
-        with psycopg2.connect(**load_config()) as conn:
+        with connect_db() as conn:
             with conn.cursor() as cur:
                 if choice == '1':
                     old_name = input("Старое имя: ")
@@ -76,7 +86,7 @@ def delete_contact():
     print("1 - Удалить по имени\n2 - Удалить по номеру")
     choice = input("Выберите: ")
     try:
-        with psycopg2.connect(**load_config()) as conn:
+        with connect_db() as conn:
             with conn.cursor() as cur:
                 if choice == '1':
                     name = input("Имя: ")
@@ -92,7 +102,7 @@ def delete_contact():
 # --- Вывод всех записей ---
 def select_all():
     try:
-        with psycopg2.connect(**load_config()) as conn:
+        with connect_db() as conn:
             with conn.cursor() as cur:
                 cur.execute("SELECT id, name, phone FROM phonebook ORDER BY id;")
                 rows = cur.fetchall()

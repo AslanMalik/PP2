@@ -119,11 +119,7 @@ def pattern_thing():
     try:
         with connect_db() as conn:
             with conn.cursor() as cur:
-                    command = """
-                    SELECT * FROM phonebook WHERE name LIKE %s OR phone LIKE %s ORDER BY id
-                    """ 
-
-                    cur.execute(command, (f"%{pattern_symbol}%", f"%{pattern_symbol}%"))
+                    cur.execute("SELECT * FROM find_pattern(%s);", (pattern_symbol,))
                     rows = cur.fetchall()
                     for row in rows:
                         print(f"{row[0]}.  {row[1]}-{row[2]}")
@@ -144,7 +140,7 @@ def insert_or_update_user():
         print("❌ Ошибка:", error)
 
 def insert_many():
-    names = ['Alex', 'Vadim', 'BadUser1', 'Alina']
+    names = ['Алекс', 'Vadim', 'BadUser1', 'Alina']
     phones = ['+77071112233', 'notaphone', '123', '+77778889900']
 
     try:
@@ -165,16 +161,11 @@ def insert_many():
 
 def limit_offset():
     try:
+        limit = int(input("Введите лимит: "))
+        offset = int(input("Введите offset: "))
         with connect_db() as conn:
             with conn.cursor() as cur:
-                command = """
-                SELECT * FROM phonebook ORDER BY id
-                LIMIT %s OFFSET %s
-                """
-
-                limit = int(input("Limit: "))
-                offset = int(input("Offset: "))
-                cur.execute(command, (limit, offset))
+                cur.execute("SELECT * FROM limit_offset(%s, %s);", (limit, offset))
                 rows = cur.fetchall()
                 for row in rows:
                     print(f"{row[0]}.  {row[1]}-{row[2]}")
@@ -189,7 +180,7 @@ def call_delete_contact():
         with connect_db() as conn:
             with conn.cursor() as cur:
                 cur.execute("CALL delete_contact_by_name_or_phone(%s, %s);", (name, phone))
-                print("✅ Контакт удалён (если был найден).")
+                print("✅ Контакт удалён")
     except Exception as error:
         print("❌ Ошибка при удалении:", error)
 

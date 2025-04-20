@@ -13,6 +13,115 @@ def connect_db():
         port="5432"
     )
 
+def create_sql_objects():
+    sql_code = """
+    CREATE OR REPLACE FUNCTION insert_many_users_return_bad(
+        names TEXT[],
+        phones TEXT[]
+    )
+    RETURNS TABLE(bad_name TEXT, bad_phone TEXT)
+    LANGUAGE plpgsql
+    AS $$
+    DECLARE
+        i INT := 1;
+    BEGIN
+        WHILE i <= array_length(names, 1) LOOP
+            IF phones[i] ~ '^\\+\\d[\\d\\s\\-]{9,15}$' THEN
+                INSERT INTO phonebook(name, phone)
+                VALUES (names[i], phones[i])
+                ON CONFLICT (name) DO UPDATE SET phone = EXCLUDED.phone;
+            ELSE
+                -- Возвращаем плохую запись
+                bad_name := names[i];
+                bad_phone := phones[i];
+                RETURN NEXT;
+            END IF;
+            i := i + 1;
+        END LOOP;
+    END;
+    $$;
+
+
+
+    CREATE OR REPLACE PROCEDURE insert_or_update_user(p_name TEXT, p_phone TEXT)
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+        IF EXISTS (SELECT 1 FROM phonebook WHERE name = p_name) THEN
+            UPDATE phonebook
+            SET phone = p_phone
+            WHERE name = p_name;
+        ELSE
+            INSERT INTO phonebook(name, phone)
+            VALUES (p_name, p_phone);
+        END IF;
+    END;
+    $$;
+
+
+
+
+
+    CREATE OR REPLACE PROCEDURE delete_contact_by_name_or_phone(
+        p_name TEXT,
+        p_phone TEXT
+    )
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+        -- Если передано имя, удаляем по имени
+        IF p_name IS NOT NULL THEN
+            DELETE FROM phonebook WHERE name = p_name;
+        END IF;
+
+        -- Если передан номер, удаляем по номеру
+        IF p_phone IS NOT NULL THEN
+            DELETE FROM phonebook WHERE phone = p_phone;
+        END IF;
+    END;
+    $$;
+
+
+
+    CREATE OR REPLACE FUNCTION find_pattern(p_pattern TEXT)
+    RETURNS TABLE (id INT, name TEXT, phone TEXT)
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+        RETURN QUERY
+        SELECT pb.id, pb.name::TEXT, pb.phone::TEXT
+        FROM phonebook pb
+        WHERE pb.name LIKE '%' || p_pattern || '%'
+        OR pb.phone LIKE '%' || p_pattern || '%'
+        ORDER BY pb.id;
+    END;
+    $$;
+
+
+
+
+    CREATE OR REPLACE FUNCTION limit_offset(p_limit INT, p_offset INT)
+    RETURNS TABLE (id INT, name TEXT, phone TEXT)
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+        RETURN QUERY
+        SELECT pb.id, pb.name::TEXT, pb.phone::TEXT FROM phonebook pb
+        ORDER BY pb.id
+        LIMIT p_limit OFFSET p_offset;
+    END;
+    $$;
+
+
+    """
+    try:
+        with connect_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute(sql_code)
+                print("✅ SQL-функции и процедуры успешно созданы.")
+    except Exception as error:
+        print("❌ Ошибка при создании SQL-объектов:", error)
+
 
 
 def create_table():
@@ -140,8 +249,8 @@ def insert_or_update_user():
         print("❌ Ошибка:", error)
 
 def insert_many():
-    names = ['Алекс', 'Vadim', 'BadUser1', 'Alina']
-    phones = ['+77071112233', 'notaphone', '123', '+77778889900']
+    names = ['Error', 'Erro1r', 'Error2', 'Error3']
+    phones = ['+77071112233', 'notaphone', '123', '77778889900']
 
     try:
         with connect_db() as conn:
@@ -188,6 +297,9 @@ def call_delete_contact():
 
 # --- Меню ---
 if __name__ == '__main__':
+
+    create_sql_objects()
+
     while True:
         print("\n📘 Меню:")
         print("1 - Создать таблицу")
